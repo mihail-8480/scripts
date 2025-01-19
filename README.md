@@ -102,6 +102,8 @@ check_branch <branch>
 Checks if the local repo has changes that need to be pushed to the remote repo, exits if there are any changes.
 
 ```sh
+source "git-utils.sh"
+
 check_clean
 ```
 
@@ -110,6 +112,8 @@ check_clean
 Syncs `$2` with `$1` by checking out to `$2` and rebasing from `$1`, then rebasing `$1` from `$2` while pushing changes to remote.
 
 ```sh
+source "git-utils.sh"
+
 sync_branches <branch1> <branch2>
 ```
 
@@ -117,3 +121,16 @@ sync_branches <branch1> <branch2>
 > This function does `push --force-with-lease` on `$1` when rebasing from `$2` in the second part of the sync process.
 > This step is unnecessary and doesn't do anything when `$1` is ahead of `$2` before the sync.
 > If there are actual conflicts the `sync_branches` command should fail at the first rebase.
+
+### `update_submodules`
+
+Updates the submodules of the current repository.
+
+> [!TIP]
+> This function has a command script `update_submodules`.
+
+```sh
+source "git-utils.sh"
+
+update_submodules
+```

@@ -12,6 +12,10 @@ find_repo_root() {
   popd > /dev/null || exit 1
 }
 
+update_submodules() {
+  git submodule update --rebase --remote
+}
+
 # Exists for compatibility reasons
 find-repo-root() {
   find_repo_root "$@"
