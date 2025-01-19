@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+shopt -s nullglob
+
+TRACKER_DIRECTORY=${TRACKER_DIRECTORY:-"$HOME/.local/share/time"}
+
+if [ ! -d "$TRACKER_DIRECTORY" ]; then
+  mkdir -p "$TRACKER_DIRECTORY"
+fi
+
+
+TIME=$(date "+%m/%d/%Y %H:%M:%S")
+SCRIPT_NAME=$0
+SCRIPT_COMMAND=$1
+
+
+if [ -z "$SCRIPT_COMMAND" ]; then
+  NO_TABLE=${NO_TABLE:-""}
+  TRACKER_FILES=($TRACKER_DIRECTORY/*)
+  TRACKERS=()
+
+  for TRACKER_FILE in "${TRACKER_FILES[@]}"; do
+    RELATIVE_NAME=${TRACKER_FILE##$TRACKER_DIRECTORY/}
+    if [[ $RELATIVE_NAME == *.lock ]]; then
+      TRACKER_NAME="${RELATIVE_NAME%.lock}"
+      TRACKERS+=($TRACKER_NAME)
+      declare "TRACKER_CURRENT_${TRACKER_NAME}=$(cat "$TRACKER_FILE")"
+    elif [[ $RELATIVE_NAME == *.total ]]; then
+      TRACKER_NAME="${RELATIVE_NAME%.total}"
+      TRACKERS+=($TRACKER_NAME)
+      declare "TRACKER_TOTAL_${TRACKER_NAME}=$(cat "$TRACKER_FILE")"
+    fi
+  done
+
+  TRACKERS=($(echo "${TRACKERS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+
+
+  if [ -z "$NO_TABLE" ]; then
+    printf " %-20s %-20s %-20s %-20s %-20s\n" "name" "running" "total" "current" "previous"
+    printf "%s\n" "----------------------------------------------------------------------------------------------"
+  fi
+
+  SUM_TOTAL=0
+  SUM_CURRENT=0
+  SUM_PREVIOUS=0
+  SUM_RUNNING=0
+
+  for TRACKER_NAME in "${TRACKERS[@]}"; do
+    TRACKER_CURRENT_NAME="TRACKER_CURRENT_${TRACKER_NAME}"
+    TRACKER_TOTAL_NAME="TRACKER_TOTAL_${TRACKER_NAME}"
+
+    TRACKER_TOTAL=${!TRACKER_TOTAL_NAME}
+    TRACKER_CURRENT_TIME=${!TRACKER_CURRENT_NAME}
+
+    DIFFERENCE=0
+    RUNNING=false
+    if [ "$TRACKER_CURRENT_TIME" ]; then
+      RUNNING=true
+      SUM_RUNNING=$((SUM_RUNNING + 1))
+      STOP_TIME_SECONDS=$(date --date "$TIME" +%s)
+      START_TIME_SECONDS=$(date --date "$TRACKER_CURRENT_TIME" +%s)
+      DIFFERENCE=$((STOP_TIME_SECONDS - START_TIME_SECONDS))
+    fi
+
+    TOTAL=$DIFFERENCE
+
+    if [ "$TRACKER_TOTAL" ]; then
+      TOTAL=$(( TRACKER_TOTAL + TOTAL ))
+    fi
+
+
+    PREVIOUS=${TRACKER_TOTAL:-0}
+
+    SUM_PREVIOUS=$((SUM_PREVIOUS + PREVIOUS))
+    SUM_TOTAL=$((SUM_TOTAL + TOTAL))
+    SUM_CURRENT=$((SUM_CURRENT + DIFFERENCE))
+
+    if [ -z "$NO_TABLE" ]; then
+      printf " %-20s %-20s %-20s %-20s %-20s\n" "$TRACKER_NAME" "$RUNNING" "$TOTAL" "$DIFFERENCE" "$PREVIOUS"
+    else
+      printf "%s %s %s %s %s\n" "$TRACKER_NAME" "$RUNNING" "$TOTAL" "$DIFFERENCE" "$PREVIOUS"
+    fi
+  done
+
+  if [ -z "$NO_TABLE" ]; then
+    if [ ${#TRACKERS[@]} != 0 ]; then
+      printf "%s\n" "----------------------------------------------------------------------------------------------"
+    fi
+
+    printf " %-20s %-20s %-20s %-20s %-20s\n" "total (${#TRACKERS[@]})" "$SUM_RUNNING" "$SUM_TOTAL" "$SUM_CURRENT" "$SUM_PREVIOUS"
+  fi
+  exit
+fi
+
+
+usage_error() {
+  echo "$1"
+  echo "Usage: $SCRIPT_NAME $SCRIPT_COMMAND $2"
+  exit 1
+}
+
+tracker_start() {
+  if [ -z "$1" ]; then
+    usage_error "Please specify a name" "<name>"
+  fi
+  TRACK_NAME=$1
+  if [ -f "$TRACKER_DIRECTORY/$TRACK_NAME.lock" ]; then
+    echo "Time tracking for '$TRACK_NAME' is already started"
+    exit 1
+  fi
+  echo $TIME > "$TRACKER_DIRECTORY/$TRACK_NAME.lock"
+}
+
+tracker_stop() {
+  if [ -z "$1" ]; then
+    usage_error "Please specify a name" "<name>"
+  fi
+
+  TRACK_NAME=$1
+  if [ ! -f "$TRACKER_DIRECTORY/$TRACK_NAME.lock" ]; then
+    echo "Time tracking for '$TRACK_NAME' is not started"
+    exit 1
+  fi
+
+  PREVIOUS_TIME=$(cat "$TRACKER_DIRECTORY/$TRACK_NAME.lock")
+  STOP_TIME_SECONDS=$(date --date "$TIME" +%s)
+  START_TIME_SECONDS=$(date --date "$PREVIOUS_TIME" +%s)
+  DIFFERENCE=$((STOP_TIME_SECONDS - START_TIME_SECONDS))
+
+  if [ -f "$TRACKER_DIRECTORY/$TRACK_NAME.total" ]; then
+    PREVIOUS_TOTAL=$(cat "$TRACKER_DIRECTORY/$TRACK_NAME.total")
+    DIFFERENCE=$((PREVIOUS_TOTAL + DIFFERENCE))
+  fi
+
+  echo "$DIFFERENCE"
+
+  rm "$TRACKER_DIRECTORY/$TRACK_NAME.lock"
+
+  echo "$DIFFERENCE" > "$TRACKER_DIRECTORY/$TRACK_NAME.total"
+}
+
+tracker_total() {
+  if [ -z "$1" ]; then
+    usage_error "Please specify a name" "<name>"
+  fi
+  TRACK_NAME=$1
+
+  DIFFERENCE=0
+  if [ -f "$TRACKER_DIRECTORY/$TRACK_NAME.lock" ]; then
+    PREVIOUS_TIME=$(cat "$TRACKER_DIRECTORY/$TRACK_NAME.lock")
+    STOP_TIME_SECONDS=$(date --date "$TIME" +%s)
+    START_TIME_SECONDS=$(date --date "$PREVIOUS_TIME" +%s)
+    DIFFERENCE=$((STOP_TIME_SECONDS - START_TIME_SECONDS))
+  fi
+
+  if [ -f "$TRACKER_DIRECTORY/$TRACK_NAME.total" ]; then
+    PREVIOUS_TOTAL=$(cat "$TRACKER_DIRECTORY/$TRACK_NAME.total")
+    DIFFERENCE=$((PREVIOUS_TOTAL + DIFFERENCE))
+  fi
+
+  echo "$DIFFERENCE"
+}
+
+tracker_current() {
+  if [ -z "$1" ]; then
+    usage_error "Please specify a name" "<name>"
+  fi
+  TRACK_NAME=$1
+  if [ ! -f "$TRACKER_DIRECTORY/$TRACK_NAME.lock" ]; then
+    echo "Time tracking for '$TRACK_NAME' is not started"
+    exit 1
+  fi
+
+  PREVIOUS_TIME=$(cat "$TRACKER_DIRECTORY/$TRACK_NAME.lock")
+  STOP_TIME_SECONDS=$(date --date "$TIME" +%s)
+  START_TIME_SECONDS=$(date --date "$PREVIOUS_TIME" +%s)
+  DIFFERENCE=$((STOP_TIME_SECONDS - START_TIME_SECONDS))
+  echo $DIFFERENCE
+}
+
+tracker_end() {
+  if [ -z "$1" ]; then
+    usage_error "Please specify a name" "<name>"
+  fi
+  TRACK_NAME=$1
+
+  if [ -f "$TRACKER_DIRECTORY/$TRACK_NAME.lock" ]; then
+    rm "$TRACKER_DIRECTORY/$TRACK_NAME.lock"
+  fi
+  if [ -f "$TRACKER_DIRECTORY/$TRACK_NAME.total" ]; then
+    rm "$TRACKER_DIRECTORY/$TRACK_NAME.total"
+  fi
+}
+
+
+if [ "$SCRIPT_COMMAND" == "start" ]; then
+  tracker_start "$2"
+elif [ "$SCRIPT_COMMAND" == "current" ]; then
+  tracker_current "$2"
+elif [ "$SCRIPT_COMMAND" == "stop" ]; then
+  tracker_stop "$2"
+elif [ "$SCRIPT_COMMAND" == "total" ]; then
+  tracker_total "$2"
+elif [ "$SCRIPT_COMMAND" == "end" ]; then
+  tracker_end "$2"
+else
+  echo "Unknown action '$SCRIPT_COMMAND'"
+  echo "Usage: $SCRIPT_NAME start|current|stop|total|end <name>"
+  exit 1
+fi
