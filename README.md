@@ -127,7 +127,7 @@ sync_branches <branch1> <branch2>
 Updates the submodules of the current repository.
 
 > [!TIP]
-> This function has a command script `update_submodules`.
+> This function has a command script called `update-submodules`.
 
 ```sh
 source "git-utils.sh"
