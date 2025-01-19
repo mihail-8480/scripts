@@ -94,7 +94,7 @@ Check if the current branch is equal to some value, exits if it's not.
 ```sh
 source "git-utils.sh"
 
-check_branch "dev"
+check_branch <branch>
 ```
 
 ### `check_clean`
@@ -110,7 +110,7 @@ check_clean
 Syncs `$2` with `$1` by checking out to `$2` and rebasing from `$1`, then rebasing `$1` from `$2` while pushing changes to remote.
 
 ```sh
-sync_branches "dev" "master"
+sync_branches <branch1> <branch2>
 ```
 
 > [!WARNING]

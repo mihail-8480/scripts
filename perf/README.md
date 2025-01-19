@@ -14,7 +14,7 @@ Executes the passed arguments as a command and runs `perf record` on the created
 > The file that is specified by the `PERF_DATA_FILE` environment variable is deleted and might be recreated when this command runs.
 
 ```sh
-perf/record some_program arg1 arg2
+perf/record <command>
 ```
 
 ### Environment Variables
@@ -29,7 +29,7 @@ Executes `perf script -F +pid` and saves the output to `$PERF_SCRIPT_OUTPUT`.
 > The file that is specified by the `PERF_SCRIPT_OUTPUT` environment variable is deleted and might be recreated when this command runs.
 
 ```sh
-perf/convert 
+perf/convert
 ```
 
 ### Environment Variables

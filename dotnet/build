@@ -22,9 +22,6 @@ build_single() {
   local CONFIGURATION=${2:-Release}
   dotnet publish --framework "$FRAMEWORK" --runtime "$RUNTIME" --configuration "$CONFIGURATION" "$REPO_ROOT/$PROJECT" || exit 1
   
-  
-
-  
   if [ -d "$ARTIFACT_ROOT" ]; then
     rm -r "${ARTIFACT_ROOT:?}" || exit 1
   fi
