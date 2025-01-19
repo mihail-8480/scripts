@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-find-repo-root() {
+find_repo_root() {
   pushd "$(pwd)" > /dev/null || exit 1
   while [ ! -d .git ]; do
     if [ "$(pwd)" == "/" ]; then
@@ -12,10 +12,16 @@ find-repo-root() {
   popd > /dev/null || exit 1
 }
 
+# Exists for compatibility reasons
+find-repo-root() {
+  find_repo_root "$@"
+}
+
+
 check_branch() {
   CURRENT_BRANCH="$(git branch --show-current)"
   if [ "$CURRENT_BRANCH" != "$1" ]; then
-    echo "Cannot release from '$CURRENT_BRANCH', merge to '$1' first."
+    echo "The current branch should be $1, got '$CURRENT_BRANCH'"
     exit 1
   fi
 }
