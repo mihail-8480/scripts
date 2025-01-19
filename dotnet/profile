@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../git-utils.sh"
+
+if [ ! -f "/usr/bin/perf" ];then
+  echo "Perf executable not found"
+  exit 1
+fi
+
+start_with_profiler() {
+  export PROFILE_DIRECTORY
+  PROFILE_DIRECTORY=$(mktemp -d)
+  echo "Starting profile in $PROFILE_DIRECTORY"
+ 
+  pushd "$PROFILE_DIRECTORY" > /dev/null || exit 1
+  "$SCRIPT_DIR/../perf/record" "$1" || exit 1
+  PERF_DATA_FILE=$2 "$SCRIPT_DIR/../perf/convert" || exit 1
+  popd > /dev/null || exit 1
+  
+  echo Profile emitted: "$PROFILE_DIRECTORY/$2"
+}
+
+build_and_profile() {
+  local FRAMEWORK
+  local REPO_ROOT
+  local RUNTIME
+  local CONFIGURATION=${3:-Debug}
+  local PROJECT=$2
+  
+  if [ -z "$PROJECT" ]; then
+    echo "Please specify a valid project name as the second argument"
+    exit 1
+  fi
+  
+  RUNTIME=$(get-rid)
+  REPO_ROOT=$(find-repo-root)
+  FRAMEWORK=$(get-framework)
+  
+  export DOTNET_PerfMapEnabled=1
+  export DOTNET_EnableEventLog=1
+  export DOTNET_EnableWriteXorExecute=0
+
+  if [ "$1" == "native" ]; then
+    local EXECUTABLE_PATH="$REPO_ROOT/$PROJECT/bin/$CONFIGURATION/$FRAMEWORK/$RUNTIME/publish/$PROJECT"
+    dotnet publish --framework "$FRAMEWORK" --runtime "$RUNTIME" --configuration "$CONFIGURATION" "$REPO_ROOT/$PROJECT" || exit 1
+    start_with_profiler "$EXECUTABLE_PATH" "$PROJECT.perf"
+  elif [ "$1" == "jit" ]; then
+    local EXECUTABLE_PATH="$REPO_ROOT/$PROJECT/bin/$CONFIGURATION/$FRAMEWORK/$RUNTIME/$PROJECT"
+    dotnet build --framework "$FRAMEWORK" --runtime "$RUNTIME" --configuration "$CONFIGURATION" "$REPO_ROOT/$PROJECT" || exit 1
+    start_with_profiler "$EXECUTABLE_PATH" "$PROJECT.perf"
+  else
+    echo "Unknown build type '$1', please use 'native' or 'jit'"
+    exit 1
+  fi
+}
+
+build_and_profile "$@"

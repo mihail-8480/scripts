@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+EVENT_PERMISSION_LEVEL=$(cat /proc/sys/kernel/perf_event_paranoid)
+if [ "$EVENT_PERMISSION_LEVEL" -gt -1 ]; then
+  sysctl kernel.perf_event_paranoid=-1 || exit 1
+fi

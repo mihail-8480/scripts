@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../git-utils.sh"
+
+clean_directory() {
+  if [ -d "$1" ]; then
+    echo Removing "$1"
+    rm -r "$1"
+  fi
+}
+
+pushd "$(find-repo-root)" > /dev/null || exit 1
+source "projects.sh" || exit 1
+
+clean_directory "artifacts"
+
+for project in "${PROJECTS[@]}"; do
+  clean_directory "${project:?}/bin"
+  clean_directory "${project:?}/obj"
+done
+
+popd > /dev/null || exit 1

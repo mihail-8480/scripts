@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+PERF_SCRIPT_OUTPUT="${PERF_DATA_FILE:-profile.perf}"
+if [ -e "$PERF_SCRIPT_OUTPUT" ]; then
+    rm "$PERF_SCRIPT_OUTPUT"
+fi
+
+perf script -F +pid > "$PERF_SCRIPT_OUTPUT"
