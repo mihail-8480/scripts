@@ -65,13 +65,17 @@ dotnet/clean
 
 ### `projects.sh` Format
 
-The `projects.sh` file must export an array with the name `PROJECTS` which contains all of the directories which contain .NET projects.
+The `projects.sh` file must export an array with the name `PROJECTS` which contains all the directories which contain .NET projects.
+
+It might also contain a `PROJECT_ROOT` export which overrides the repository root as the root directory for the other .NET scripts.
 
 ```sh
 #!/usr/bin/env bash
 
+export REPO_ROOT="src"
+
 export PROJECTS=(
-  "Project1"
-  "Project2"
+  "src/Project1"
+  "src/Project2"
 )
 ```

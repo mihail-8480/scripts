@@ -1,26 +1,36 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source "$SCRIPT_DIR/common.sh"
-source "$SCRIPT_DIR/../git-utils.sh"
+source "$SCRIPT_DIR/common.sh" || exit 1
+source "$SCRIPT_DIR/../git-utils.sh" || exit 1
 
 FRAMEWORK=$(get-framework)
 REPO_ROOT=$(find-repo-root)
+
 RUNTIME=$(get-rid)
 ARTIFACT_ROOT="$REPO_ROOT/artifacts"
 
+pushd "$REPO_ROOT" > /dev/null || exit 1
+source "projects.sh" || exit 1
+
+if [ -z "$PROJECT_ROOT" ]; then
+  export PROJECT_ROOT="$REPO_ROOT"
+else
+  export PROJECT_ROOT="$REPO_ROOT"/"$PROJECT_ROOT"
+fi
+
+popd > /dev/null || exit 1 
 
 build_single() {
   local PROJECT=$1
   
-    
   if [ -z "$PROJECT" ]; then
     echo "Please specify a valid project name as the second argument"
     exit 1
   fi
   
   local CONFIGURATION=${2:-Release}
-  dotnet publish --framework "$FRAMEWORK" --runtime "$RUNTIME" --configuration "$CONFIGURATION" "$REPO_ROOT/$PROJECT" || exit 1
+  dotnet publish --framework "$FRAMEWORK" --runtime "$RUNTIME" --configuration "$CONFIGURATION" "$PROJECT_ROOT/$PROJECT" || exit 1
   
   if [ -d "$ARTIFACT_ROOT" ]; then
     rm -r "${ARTIFACT_ROOT:?}" || exit 1
@@ -28,7 +38,7 @@ build_single() {
   
   mkdir -p "$ARTIFACT_ROOT" || exit 1
   
-  local PUBLISH_PATH="$REPO_ROOT/$PROJECT/bin/$CONFIGURATION/$FRAMEWORK/$RUNTIME/publish"
+  local PUBLISH_PATH="$PROJECT_ROOT/$PROJECT/bin/$CONFIGURATION/$FRAMEWORK/$RUNTIME/publish"
   cp "$PUBLISH_PATH"/* "$ARTIFACT_ROOT" || exit 1
 }
 
